@@ -1,0 +1,40 @@
+{
+  "name": "stracajs",
+  "version": "1.0.0",
+  "description": "Server that rapidly calls apps",
+  "main": "straca.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/braun/StracaJs.git"
+  },
+  "keywords": [
+    "Typescript",
+    "Server",
+    "NodeJs"
+  ],
+  "author": "Stanislav Kunt",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/braun/StracaJs/issues"
+  },
+  "homepage": "https://github.com/braun/StracaJs#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.2",
+    "express": "^4.21.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "muter": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/luxon": "^2.3.1",
+    "@types/morgan": "^1.9.9",
+    "@types/multer": "^1.4.12"
+
+  }
+}
