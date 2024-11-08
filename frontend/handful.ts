@@ -1,5 +1,7 @@
 import { Guid } from "helpers/stringextender";
 import { Manifest } from "../common/models/manifest";
+import { MessageStore } from "../common/models/mstore";
+import { UrlStore } from "./urlstore";
 
 const APPTOKEN = "apptoken";
 
@@ -8,11 +10,21 @@ const APPTOKEN = "apptoken";
  */
 export class StracaInHandful
 {
+    messageStore:MessageStore;
+
     constructor()
     {
+        this.messageStore = new UrlStore(this);
     }
 
     
+    /**
+     * id of current user
+     */
+    get userId()
+    {
+        return "anonymous";
+    }
     /**
      * gets app token.
      * app token is id of the application installation on the device. 
@@ -42,7 +54,6 @@ export class StracaInHandful
         }
         return this._manifest;
     }
-
 
 
 }
