@@ -1,3 +1,6 @@
+/**
+ * Manifest of the application
+ */
 export interface Manifest {
   Author: string
   Title: string

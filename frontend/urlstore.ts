@@ -1,36 +1,34 @@
 import { Guid } from "helpers/stringextender";
-import { HeaderDevice } from "../common/constants";
 import { Message } from "../common/models/message";
-import { MessageListenerContext, MessageStore } from "../common/models/mstore";
+import { MessageListenerContext, MessageLoadRequest, MessageLoadResult, MessageSaveResult, MessageStore, MessageTypeOptions, MessageTypeSetup } from "../common/models/mstore";
 import { StracaInHandful } from "./handful";
 import dayjs = require("dayjs");
+import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
+import { MessageListenerRecord, MessageStoreBase } from "../common/mstorebase";
 
-export class UrlStore implements MessageStore
+const TAG="urlstore";
+
+/**
+ * simple MessageStore implementation using straca's stracastore service accessed by http
+ */
+export class UrlStore extends MessageStoreBase
 {
+    async deleteByExample(req: MessageLoadRequest): Promise<void> {
+       
+    }
 
     protected _straca:StracaInHandful;
     constructor(straca:StracaInHandful)
     {
+        super();
         this._straca = straca;
         
     }
 
-    async fetch(msg:Message,method:string)
-    {
-        const h:Headers = new Headers();
-        h.append(HeaderDevice,this._straca.appToken);
-        h.append('content-type','application/json');
-        const rv = await fetch("stracastore",{
-            body: JSON.stringify(msg),
-            headers: h,
-            method:method,
-            
-        });
 
-        return rv;
-    }
-
-    async save(msg: Message): Promise<boolean> {
+   
+    
+    async saveInternal(msg: Message): Promise<MessageSaveResult> {
         if(msg.meta.messageUid == null)
             msg.meta.messageUid = Guid.newGuid();
         
@@ -38,18 +36,21 @@ export class UrlStore implements MessageStore
         msg.meta.device = this._straca.appToken;
         msg.meta.creator = this._straca.userId;
 
-       const rv =  (await this.fetch(msg,"PUT")).ok;
-       return rv;
+        const req = this._straca.formRequest(StracaOperations.Stracatore,StracaOperations.Save);
+        req.data = msg;
+
+       const res =  (await this._straca.fetch(req));
+       return res.data;
     }
-    async loadByExample(example: Message): Promise<Message[]> {
-        const res =  (await this.fetch(example,"POST"));
+    async loadByExample(req: MessageLoadRequest): Promise<MessageLoadResult> {
+        const request = this._straca.formRequest(StracaOperations.Stracatore,StracaOperations.Load);
+        request.data = req;
+        const res =  (await this._straca.fetch(request));
         if(!res.ok)
             return null;
-        const rv: Message[] = await res.json();
-        return rv;
+       return res.data;
     }
-    listen(mtype: string, callback: (m: Message) => void): MessageListenerContext {
-        throw new Error("Method not implemented.");
-    }
+   
+   
     
 }

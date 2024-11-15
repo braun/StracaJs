@@ -1,54 +1,101 @@
-import { Message } from "../common/models/message";
-import { HeaderDevice } from "../common/constants";
+
+
+import "reflect-metadata"
+
+
 import {MessageStore} from "../common/models/mstore";
-import { SqliteStore } from "./sqlite/sqlitestore";
-import { Straca } from "./straca";
+import { SqlStore } from "./sql/sqlstore";
+import { Straca, StracaHandler, StracaService } from "./straca";
 import { join } from "path";
+import * as Express from "express";
+
+import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
+import { StracaMessageStoreManager } from "./stracastoremanager";
+import { Message } from "@straca/common/models/message";
+import { MLOADREQ } from "@straca/common/mstorequery";
 
 const TAG="STRACATORE";
-export class StracaStore
+
+/**
+ * factory for message store instance.
+ */
+export type MessageStoreFactory = (stracaStore:StracaStore,req:StracaStoreRequest)=>MessageStore;
+
+/**
+ * HTTP adapter for MessageStore implementation
+ * publishes message store services to frontend applications 
+ */
+export class StracaStore implements StracaService
 {
-    messageStore: MessageStore;
+    messageStoreFactory: MessageStoreFactory;
 
-    straca:Straca;
+    protected straca:Straca;
 
-    constructor(straca:Straca,urlpath:string)
+    mtManager:StracaMessageStoreManager = new StracaMessageStoreManager();
+
+ 
+
+    /**
+     * set the factory for message store.
+     *  the factory it is called on each request to straca store. so caching is recommended. it allows to server different requests with different stores. 
+     * @param messageStoreFactory factory for message store implementations
+     */
+    setFactory(messageStoreFactory:MessageStoreFactory)
+    {
+        this.messageStoreFactory = messageStoreFactory;
+        return this;
+    }
+    /**
+     * creates new straca store and mounts its url path
+     * @param straca straca instance
+       */
+    constructor(straca:Straca)
     {
         this.straca = straca;
-        this.messageStore = new SqliteStore(join(process.cwd(),"..","data","db.sqlite"));
-        straca.app.use(urlpath,async (req,res,next)=>{
-            try
-            {
-                const opname = req.headers["X-straca-op"];
-                const httpmethod = req.method;
-                const body = req.body as any;
-                const appid = req.headers[HeaderDevice]
-                console.log(TAG,"CALL:",opname,httpmethod,appid)
-                if(httpmethod == "PUT")
-                {
-                    const msg = body as Message;
-                    console.log(TAG,"SAVE MESSAGE", msg.meta.messageType, msg.meta.messageUid);
-                    await this.messageStore.save(msg);
-                    res.status(200);
-                    res.send("OK");
-                    return;
-                }
-                else if(httpmethod == "POST")
-                {
-                    const msg = body as Message;
-                    const rv = await this.messageStore.loadByExample(msg);
-                    res.type('json');
-                    res.status(200);
-                    res.send(JSON.stringify(rv,null,2));
-                    return;
-                }
-            }
-            catch(err)
-            {
-                console.error(TAG,err);
-                res.status(500);
-                res.send(err);
-            }
-        })
     }
+        // strcastore listens on one endpoint. the {operation} has there only "documentation" purpose
+        // real operation name is taken from the payload
+     handlers = [
+    {
+      
+      operation: StracaOperations.Save,
+      handle: async (req:StracaStoreRequest,res:StracaStoreResponse)=>{ 
+     
+                const mstore = this.messageStoreFactory(this,req);
+                const rqdata = req.data;
+             
+                const msg:Message = rqdata as Message;
+                const mtype = msg.meta.messageType;
+                console.log(TAG,"SAVE MESSAGE", mtype, msg.meta.messageUid);
+        
+                const rec = this.mtManager.findMessageType(mtype);
+                
+                if(rec != null)
+                {
+                    var prev:Message = null;
+                    if(rec.knockOut)
+                    {
+                        const query =  MLOADREQ().messageStore(mstore).mtype(mtype);
+                        prev = await query.loadOne();
+                        await query.delete();
+                    }
+                    if(rec.callbacks.onNewMessage)
+                        await rec.callbacks.onNewMessage(msg,prev);
+                }
+                res.data =  await mstore.save(msg);
+               res.ok = true;
+            }
+        },{
+            operation:StracaOperations.Load,
+            handle: async(req:StracaStoreRequest,res:StracaStoreResponse)=>{
+                const mstore = this.messageStoreFactory(this,req);
+                const rqdata = req.data;
+                console.log(TAG,"LOAD MESSAGE(s)", rqdata.example.meta.messageType, rqdata.example.meta.messageUid);
+                res.data = await mstore.loadByExample(rqdata);
+                res.ok = true;
+              
+            }
+        }
+    ]
+          service=StracaOperations.Stracatore; 
 }
