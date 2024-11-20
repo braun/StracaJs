@@ -114,7 +114,7 @@ export class CawListener
             {
 
             if(!evid.startsWith(cbsk))
-                return;
+                continue;
             const cbs = this.callbacks[cbsk];
             for(const cb of cbs)
                 try

@@ -106,6 +106,24 @@ export class StracaInHandful
            url = `${url}?body=${encodeURIComponent(JSON.stringify(req))}`;
         return url;
     }
+
+
+    /**
+     * Handy for easy quick call without request creation and result handling
+     * @param service service to call
+     * @param operation operation to call
+     * @param requestData data to send
+     * @returns operation result data
+     */
+    async simpleFetch(service:string,operation:string,requestData?:any)
+    {
+        const req = this.formRequest(service,operation);
+        req.data = requestData;
+        const res = await this.fetch(req);
+        const rv = res.ok ? res.data: null;
+        return rv;
+    }
+    
     /**
      * Sents request to straca
      * @param req request to be sent
