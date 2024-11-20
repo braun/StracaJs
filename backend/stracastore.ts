@@ -5,7 +5,7 @@ import "reflect-metadata"
 
 import {MessageStore} from "../common/models/mstore";
 import { SqlStore } from "./sql/sqlstore";
-import { Straca, StracaHandler, StracaService } from "./straca";
+import { Straca, StracaOperation, StracaService } from "./straca";
 import { join } from "path";
 import * as Express from "express";
 
@@ -55,7 +55,7 @@ export class StracaStore implements StracaService
     }
         // strcastore listens on one endpoint. the {operation} has there only "documentation" purpose
         // real operation name is taken from the payload
-     handlers = [
+     operations = [
     {
       
       operation: StracaOperations.Save,
@@ -80,7 +80,14 @@ export class StracaStore implements StracaService
                         await query.delete();
                     }
                     if(rec.callbacks.onNewMessage)
-                        await rec.callbacks.onNewMessage(msg,prev);
+                        try
+                        {
+                            await rec.callbacks.onNewMessage(msg,prev);
+                        }
+                        catch(ex)
+                        {
+                            console.error("Stracastore.onNewMessage",ex);
+                        }
                 }
                 res.data =  await mstore.save(msg);
                res.ok = true;
@@ -90,8 +97,20 @@ export class StracaStore implements StracaService
             handle: async(req:StracaStoreRequest,res:StracaStoreResponse)=>{
                 const mstore = this.messageStoreFactory(this,req);
                 const rqdata = req.data;
-                console.log(TAG,"LOAD MESSAGE(s)", rqdata.example.meta.messageType, rqdata.example.meta.messageUid);
-                res.data = await mstore.loadByExample(rqdata);
+                const mtype = rqdata.example.meta.messageType;
+                console.log(TAG,"LOAD MESSAGE(s)", mtype, rqdata.example.meta.messageUid);
+                const loaded = await mstore.loadByExample(rqdata);
+                if(mtype != null && (loaded.data == null || loaded.data.length == 0))
+                {
+                    const rec = this.mtManager.findMessageType(mtype);
+                
+                    if(rec != null)
+                    {
+                        if(rec.callbacks.onMessageNotFound)
+                           loaded.data = [await rec.callbacks.onMessageNotFound(rqdata)];
+                    }
+                }
+                res.data = loaded;
                 res.ok = true;
               
             }

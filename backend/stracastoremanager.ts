@@ -1,10 +1,11 @@
-import { MessageStoreManager, MessageTypeCallback, MessageTypeOptions, MessageTypeSetup } from "@straca/common/models/mstore";
+import { Message } from "@straca/common/models/message";
+import { MessageLoadRequest, MessageStoreManager, MessageTypeCallback, MessageTypeOptions, MessageTypeSetup } from "@straca/common/models/mstore";
 
 export interface StracaMessageTypeOptions extends MessageTypeOptions
 {
     messageTypePrefix:string;
 
-    callbacks:{[key:string]:MessageTypeCallback}
+    callbacks:{[key:string]:any}
 }
 export class StracaMessageStoreManager implements MessageStoreManager
 {
@@ -24,6 +25,11 @@ export class StracaMessageStoreManager implements MessageStoreManager
             rec.callbacks.onNewMessage = callback;
             return this;
         },
+        onMessageNotFound(callback:(loadreq:MessageLoadRequest)=>Promise<Message>)
+        {
+            rec.callbacks.onMessageNotFound = callback;
+            return this;
+        }
        }
     }
 

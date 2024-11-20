@@ -30,6 +30,8 @@ export interface StracaStoreRequest
      */
     oprationId:string;
 
+    /** http method default POST*/
+    method?:string;
     /**
      * id of device sending the request
      */
@@ -43,6 +45,7 @@ export interface StracaStoreRequest
 }
 
 /**
+ * General response from straca server
  * Response encapsulating json
  */
 export interface StracaStoreResponse
@@ -76,4 +79,11 @@ export interface StracaStoreResponse
      * response data
      */
     data:any
+
+    /**
+     * the operation is still pending, dont send response now, or the handler handles the response itself
+     */
+    dontsend?:boolean
+
+
 }

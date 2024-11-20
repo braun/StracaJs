@@ -127,5 +127,6 @@ export type MessageTypeCallback = (msg:Message,previous?:Message)=>Promise<void>
 export interface MessageTypeSetup
 {
     onNewMessage(callback:  MessageTypeCallback):MessageTypeSetup;
+    onMessageNotFound(callback:(loadreq:MessageLoadRequest)=>Promise<Message>):MessageTypeSetup;
 }
 

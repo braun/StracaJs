@@ -4,6 +4,7 @@ import { MessageStore } from "../common/models/mstore";
 import { UrlStore } from "./urlstore";
 import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
 import { MessageLoadRequestBuilder } from "../common/mstorequery";
+import { CawListener } from "./cawlistener";
 
 
 const APPTOKEN = "apptoken";
@@ -16,11 +17,16 @@ export class StracaInHandful
 {
     messageStore:MessageStore;
 
+    caw:CawListener;
+
     constructor()
     {
         this.messageStore = new UrlStore(this);
+        this.caw = new CawListener(this);
     }
 
+    
+   
     /**
      * 
      * @returns creates message load request builder on message store
@@ -68,36 +74,56 @@ export class StracaInHandful
 
 
     /**
-     * constructs json envelope for straca RPC call 
+     * constructs json envelope for straca RPC call
+     * @param service straca service to be called 
      * @param operation RPC operation to be invoked
+     * @param method HTTP method to use (default POST)
      * @returns envelope JSON
      */
-    formRequest(service:string,operation:string):StracaStoreRequest
+    formRequest(service:string,operation:string, method:string = "POST"):StracaStoreRequest
     {
         const rv:StracaStoreRequest = {
             service:service,
             operation: operation,
             oprationId: Guid.newGuid(),
             deviceId: this.appToken,
-            userId: this.userId
+            userId: this.userId,
+            method:method
         }
         return rv;
     }
 
     /**
+     * Constructs url for request, adds body as query parameter for http GET method
+     * @param req request to form url for
+     * @returns url
+     */
+    formUrlForRequest(req:StracaStoreRequest)
+    {
+        const base = `straca/${req.service}/${req.operation}`;
+        var url = base;
+        if(req.method == "GET")
+           url = `${url}?body=${encodeURIComponent(JSON.stringify(req))}`;
+        return url;
+    }
+    /**
      * Sents request to straca
      * @param req request to be sent
-     * @param method HTTP method default POST
+
      * @returns response from server or dummy response in case of http error
      */
-    async fetch(req:StracaStoreRequest,method:string = "POST"):Promise<StracaStoreResponse>
+    async fetch(req:StracaStoreRequest):Promise<StracaStoreResponse>
     {
         const h:Headers = new Headers();
         h.append('content-type','application/json');
-        const rv = await fetch(`straca/${req.service}/${req.operation}`,{
+        if(req.method == null)
+            req.method = "POST";
+
+        const url = this.formUrlForRequest(req);
+        const rv = await fetch(url,{
             body: JSON.stringify(req),
             headers: h,
-            method:method,
+            method:req.method,
             
         });
         if(!rv.ok)
