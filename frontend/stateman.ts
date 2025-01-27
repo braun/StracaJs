@@ -86,6 +86,8 @@ export class StracaStateManager<T>
         if(res != null)
         {
             this.stateMsg = res;
+            this.onchange.fire((cb)=>cb(this.state));
+ 
         }
         return this;
      }

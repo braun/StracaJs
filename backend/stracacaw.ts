@@ -59,6 +59,8 @@ export class StracaCaw extends StracaServiceBase {
             clientCawer.expressRes = res;
             this.map[token as string] = clientCawer;
             stracaRes.dontsend = true;
+            clientCawer.runPing();
+       
          });
 
          /** 
@@ -83,8 +85,10 @@ export class StracaCaw extends StracaServiceBase {
 
     fireEvent(eventId:string,data:any)
     {
+        console.log(TAG,"fireEvent",eventId)
         const toSend:StracaCawClient[] = [];
         this.topNode.find(toSend,eventId);
+        console.log(TAG,"found subscribers",eventId,toSend.length)
         for(const c of toSend)
         {
             c.sendEv(eventId,data);
@@ -159,7 +163,20 @@ export class StracaCawTreeNode
 }
 export class StracaCawClient
 {
+    
+    sendPing()
+    {
+        this.sendEv("ping","{}");
+    }
+
+    interval:NodeJS.Timeout;
+
+    runPing()
+    {
+        this.interval = setInterval(()=>this.sendPing(),10*1000);
+    }
     dropAll() {
+        clearInterval(this.interval);
         for(const n of this.nodeList)
         {
             n.remove(this);
@@ -180,6 +197,7 @@ export class StracaCawClient
         mres.ok = true;
         mres.operation = eventId;
         mres.data = data;
+        console.log(TAG,"sending event",eventId,this.res.oprationId);
        this.expressRes.write(`data: ${JSON.stringify({ event: eventId,data: mres})}\n\n`);
     }
 }

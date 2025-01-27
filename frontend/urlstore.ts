@@ -2,7 +2,7 @@ import { Guid } from "helpers/stringextender";
 import { Message } from "../common/models/message";
 import { MessageListenerContext, MessageLoadRequest, MessageLoadResult, MessageSaveResult, MessageStore, MessageTypeOptions, MessageTypeSetup } from "../common/models/mstore";
 import { StracaInHandful } from "./handful";
-import dayjs = require("dayjs");
+import * as dayjs from 'dayjs';
 import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
 import { MessageListenerRecord, MessageStoreBase } from "../common/mstorebase";
 

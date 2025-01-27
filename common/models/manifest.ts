@@ -2,16 +2,14 @@
  * Manifest of the application
  */
 export interface Manifest {
-  Author: string
-  Title: string
-  AppId: string
-  Description: string
-  Version: string
-  Icon: string
-  MinSize: number
-  Weight: number
-  BaseUrl: string
-  IndexPage: string
-  Cache: string
-  ContainerServices: any[]
+  author: string
+  short_name: string
+  appId: string
+  name: string
+  version: string
+  icons: {
+    src:string,
+    type:string,
+    sizes:string
+  }[]
 }

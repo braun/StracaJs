@@ -2,6 +2,12 @@ import { error } from "console";
 import { CawSubscribeRequest } from "../common/models/caw";
 import { StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
 import { StracaInHandful } from "./handful";
+import { EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source';
+import { Callbacker } from "./callbacker";
+
+
+class RetriableError extends Error { }
+class FatalError extends Error { }
 
 /**
  * api to work with event subsription
@@ -19,6 +25,10 @@ export interface CawSubscriptionApi
     onCaw(callback:(event:StracaStoreResponse)=>void):CawSubscriptionApi;
 }
 
+export interface CawLifecycleListener
+{
+    onOpen():Promise<void>;
+}
 /**
  * listener for caw events
  * Events by SSE from straca server
@@ -27,7 +37,7 @@ export class CawListener
 {
     serviceId:string;
     straca:StracaInHandful;
-    eventSource:EventSource;
+    eventAbortController:AbortController;
 
     callbacks:{[key:string]:((event:StracaStoreResponse)=>void)[]} = {}
 
@@ -70,8 +80,8 @@ export class CawListener
         if(this.callbacks.hasOwnProperty(eventId))
             return rv;
       
-        if(!this.eventSource)
-            await this.listen();
+       // if(!this.eventAbortController)
+        //    await this.listen(null);
 
         const s = this.straca;
         const req =  s.formRequest(this.serviceId,"subscribe");
@@ -84,49 +94,100 @@ export class CawListener
         }
     }
 
-
+    lifecycleCallbacker:Callbacker<CawLifecycleListener> = new Callbacker();        
     /**
      * connects to cawservice on straca server.
      * Establishes SSE channel to receive events of straca server
      */
-     listen():Promise<void>
+    async listen(lifecycleListener:CawLifecycleListener):Promise<void>
     {
-        const rv = new Promise<void>((resolve,reject)=>{
-        const req =  this.straca.formRequest(this.serviceId,"listen","GET");
+        if(lifecycleListener != null)
+            this.lifecycleCallbacker.addListener(lifecycleListener);
+        const rv = new Promise<void>( (resolve,reject)=>{
+        const req =  this.straca.formRequest(this.serviceId,"listen");
 
         const url = this.straca.formUrlForRequest(req);
-        this.eventSource = new EventSource(url);
+        this.eventAbortController =  new AbortController();
+        const caw = this;
+         const srcPromise =  fetchEventSource(url,{
+            method:"POST",
+            body: JSON.stringify(req),
+            signal: this.eventAbortController.signal,
+            headers:{
+               'Content-Type': 'application/json',
+            },
 
-        // firefox does not fire the onopen event
-        const removeto =   setTimeout(()=>resolve(null),1000);
-        this.eventSource.onopen=(e:Event)=>{
-            clearTimeout(removeto);
-            resolve(null);
-        };
-        this.eventSource.onerror = (event)=>{
-            console.error("Caw",event)
-        }
-        this.eventSource.onmessage = async (event)=>{
-            const data = JSON.parse(event.data)
-            const evres = data.data as StracaStoreResponse;
-            const evid = evres.operation;
-            for(const cbsk in this.callbacks)
-            {
-
-            if(!evid.startsWith(cbsk))
-                continue;
-            const cbs = this.callbacks[cbsk];
-            for(const cb of cbs)
-                try
-                {
-                  await cb(evres);  
+            async onopen(response) {
+                if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
+                 {
+                    // clear the callbacks, should be readded by subscribe in onOpen handlers
+                    caw.callbacks = {};
+                    await caw.lifecycleCallbacker.fire((cb)=>cb.onOpen());  
+                    resolve();
+                    return; // everything's good
+                 }  
+                } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                    // client-side errors are usually non-retriable:
+                    throw new FatalError();
+                } else {
+                    throw new RetriableError();
                 }
-                catch(err)
+            },
+            async onmessage(msg) {
+                // if the server emits an error message, throw an exception
+                // so it gets handled by the onerror callback below:
+                if (msg.event === 'FatalError') {
+                    throw new FatalError(msg.data);
+                }
+
+                const data = JSON.parse(msg.data)
+                const evres = data.data as StracaStoreResponse;
+                const evid = evres.operation;
+                for(const cbsk in caw.callbacks)
                 {
-                    console.error("onCaw",err);
-                }         
+    
+                if(!evid.startsWith(cbsk))
+                    continue;
+                const cbs = caw.callbacks[cbsk];
+                for(const cb of cbs)
+                    try
+                    {
+                      await cb(evres);  
+                    }
+                    catch(err)
+                    {
+                        console.error("onCaw",err);
+                    }         
+                }
+            },
+            onclose() {
+                // if the server closes the connection unexpectedly, retry:
+                throw new RetriableError();
+            },
+            onerror(err) {
+                console.error("Caw",err)
+                if (err instanceof FatalError) {
+                    throw err; // rethrow to stop the operation
+                } else {
+                    // do nothing to automatically retry. You can also
+                    // return a specific retry interval here.
+                }
             }
-        }
+        });
+
+        srcPromise.then(()=>{
+            console.log("Caw", "fetch exit");
+        }).catch((reason)=>{
+            console.error("Caw", "fetch error",reason);
+        })
+        
+        // firefox does not fire the onopen event
+        // const removeto =   setTimeout(()=>resolve(null),1000);
+        // this.eventSource.onopen=(e:Event)=>{
+        //     clearTimeout(removeto);
+        //     resolve(null);
+        // };
+       
       
     });
     return rv;
