@@ -13,7 +13,7 @@ export class StracaOperations
 /**
  * Request encapsulating json
  */
-export interface StracaStoreRequest
+export interface StracaStoreRequest<T=any>
 {
 
     /**
@@ -40,15 +40,15 @@ export interface StracaStoreRequest
     /** id of user creted the request */
     userId:string;
 
-    /** data/parameters of the rquest, actuall type depends on the called operation */
-    data?:any;
+    /** data/parameters of the request, actuall type depends on the called operation */
+    data?:T;
 }
 
 /**
  * General response from straca server
  * Response encapsulating json
  */
-export interface StracaStoreResponse
+export interface StracaStoreResponse<T=any>
 {
     /**
      * operation name from request
@@ -78,7 +78,7 @@ export interface StracaStoreResponse
     /**
      * response data
      */
-    data:any
+    data:T;
 
     /**
      * the operation is still pending, dont send response now, or the handler handles the response itself

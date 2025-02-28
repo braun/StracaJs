@@ -6,8 +6,14 @@ import { MessageStoreManager } from '@straca/common/models/mstore';
 import { StracaStoreRequest, StracaStoreResponse } from '@straca/common/models/stracadefs';
 import { StracaMessageStoreManager } from './stracastoremanager';
 import { StracaCaw } from './stracacaw';
+import * as ejs from 'ejs';
 
 const TAG="STRACA";
+
+
+
+
+
 
 /**
  * Main class of Strace services backend
@@ -37,6 +43,24 @@ export  class Straca
     }
 
     /**
+     * Creates service configurator for a service.
+     * Service is created when not exists
+     * @param serviceName name of service to configure
+     * @returns service configurator object
+     */
+    configureService(serviceName:string)
+    {
+        
+         if(this.services[serviceName] == null)
+            this.addService({
+               service: serviceName,
+               operations: []
+            });
+         const service = this.services[serviceName];
+         return new ServiceConfigurator(service);
+   
+    }
+    /**
      * default data directory to store application persistent data
      */
     get datadir()
@@ -45,12 +69,50 @@ export  class Straca
        return rv; 
     };
 
+    /** 
+    * default assets of straca
+    */
+   get assetdir()
+   {
+      const rv = join(process.cwd(),"backend","straca-assets");
+      return rv; 
+   };
+
     constructor(app:express.Express)
     {
         this.app = app;
         this.caw = new StracaCaw(this,"caw");
         this.addService(this.caw);
 
+        this.app.get("/straca/doc/services",async (req,res,next)=>{
+         res.type('json');
+         this.sendJsonResult(res,this.services,(key:string,val:any)=>{
+               if(key == "caw" || key =="straca")
+                  return undefined;
+               if(key == "payload" || key == "response")
+               {
+                  return {
+                     class:val.name,
+                   //  location:Reflect.getMetadata("design:type",val)
+                  }
+               }
+               return val;
+            })
+        });
+        this.app.get("/straca/doc/clientstub/:service",async (req,res,next)=>{
+      
+         const servicename = req.params.service;
+         const service = this.services[servicename];
+         if(service == null)
+         {
+            res.status(404);
+            res.send("Service not found: "+servicename);
+            return;
+         }
+         res.type('text/x-typescript');
+         const text = await ejs.renderFile(join(this.assetdir,"clientstub.ejs"),service);
+         res.send(text);
+      });
         this.app.use("/straca/:service/:operation",async (req,res,next)=>{
             try
             {
@@ -142,7 +204,7 @@ export  class Straca
      * @param res express response to use
      * @param rv payload to send
      */
-     sendJsonResult(res:express.Response,rv:StracaStoreResponse)
+     sendJsonResult(res:express.Response,rv:any,replacer:(key:string,val:any)=>any = null)
     {
 
          if(!rv.dontsend) //dont send headers again
@@ -150,7 +212,7 @@ export  class Straca
             res.type('json');
             res.status(200);
          }
-        res.send(JSON.stringify(rv,null,2));
+        res.send(JSON.stringify(rv,replacer,2));
     }
 
      
@@ -159,7 +221,7 @@ export  class Straca
      * @param res express response to use
      * @param rv payload to send
      */
-      sendNoFound(res:express.Response,rv:StracaStoreResponse)
+      sendNoFound(res:express.Response,rv:any)
       {
   
           res.type('json');
@@ -167,6 +229,20 @@ export  class Straca
           res.send(JSON.stringify(rv,null,2));
           rv.dontsend = true;
       }
+
+       /**
+     * Sends  HTTP server error
+     * @param res express response to use
+     * @param rv payload to send
+     */
+       sendError(res:express.Response,rv:any)
+       {
+   
+           res.type('json');
+           res.status(500);
+           res.send(JSON.stringify(rv,null,2));
+           rv.dontsend = true;
+       }
 }
 
 /**
@@ -181,6 +257,11 @@ export interface StracaService
    service:string;
  
    /**
+    * description of service
+    */
+   rationale?:string;
+
+   /**
     * list of operations provided by service
     */
    operations:StracaOperation[];
@@ -189,7 +270,7 @@ export interface StracaService
 /**
  * handler (executioner) of a operation
  */
-export type StracaOperationHandler = (req:StracaStoreRequest,res:StracaStoreResponse,expressReq:express.Request,expressRes:express.Response)=> Promise<void>
+export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>,res:StracaStoreResponse<R>,expressReq:express.Request,expressRes:express.Response)=> Promise<void>
 
 
 /**
@@ -204,8 +285,68 @@ export interface StracaOperation
    operation:string;
 
    /**
+    * description of operation
+    */
+   rationale?:string;
+
+   /** TS interface of json data */
+   payload?:any;
+   /** short comment to payload  data*/
+   payloadRationale?:string;
+
+   /** TS interface of json response data */
+   response?:any;
+
+   /** short comment to response data */
+   responseRationale?:string;
+
+   /**
     * handler of operation
     */
    handle:StracaOperationHandler;
 
+}
+
+/**
+ * Utility class to configure and build service
+ */
+
+export class ServiceConfigurator
+{
+   service:StracaService;
+
+   constructor(service:StracaService)
+   {
+      this.service = service;
+   }
+
+   /**
+    * Adds or replaces operation in service
+    * @param operation operation to be added
+    * @param handler handler for a service
+    * @param rationale description of operation
+    * @param payload TS class or string name of interface of json data
+    * @param response TS class or string name of interface of json response data
+    * @returns this
+    */
+   operation(operation:string,handler:StracaOperationHandler,rationale:string,payload?:any,response?:any)
+   {
+      var op:StracaOperation = this.service.operations.find((op)=>op.operation == operation);
+      if(op == null)
+      {
+         op = {
+            operation:operation,
+            handle:handler,
+            rationale:rationale
+         }
+         this.service.operations.push(op);
+      }
+      op.handle = handler;
+      op.rationale = rationale;
+      op.payload = payload;
+      op.response = response;
+
+     
+      return this;
+   }
 }

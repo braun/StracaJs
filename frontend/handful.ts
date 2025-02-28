@@ -10,6 +10,12 @@ import { CawListener } from "./cawlistener";
 const APPTOKEN = "apptoken";
 
 const TAG="StracaInHandful"
+
+export interface StracaOptions
+{
+    urlBase:string;
+}
+
 /**
  * frontend class to simplify access to Straca's services
  */
@@ -19,8 +25,16 @@ export class StracaInHandful
 
     caw:CawListener;
 
-    constructor()
+    options:StracaOptions;
+
+    constructor(opts?:StracaOptions)
     {
+        this.options = {
+            urlBase:"straca"
+        }
+        if(opts != null)
+            this.options = Object.assign(this.options,opts);
+
         this.messageStore = new UrlStore(this);
         this.caw = new CawListener(this);
     }
@@ -100,7 +114,7 @@ export class StracaInHandful
      */
     formUrlForRequest(req:StracaStoreRequest)
     {
-        const base = `straca/${req.service}/${req.operation}`;
+        const base = `${this.options.urlBase}/${req.service}/${req.operation}`;
         var url = base;
         if(req.method == "GET")
            url = `${url}?body=${encodeURIComponent(JSON.stringify(req))}`;

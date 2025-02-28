@@ -1,0 +1,94 @@
+<%
+function cap(val) {
+    return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+}
+
+function tp(payload) {
+    if(payload == null)
+        return "any";
+    if (typeof payload === "function") {
+        return payload.name;
+    } else {
+        return payload;
+    }
+}
+
+function rat(rationale,prefix, nulltext) {
+    if(rationale == null) {
+        return nulltext;
+    }
+    if(prefix == null) {
+        return rationale;
+    } else {
+        return prefix +": "+ rationale;
+    }
+}
+%>
+
+/**
+ * <%= service %>StracaWrapper
+ * <%= rationale %>
+ * Typesafe wrapper for the StracaInHandful service <%= service %>
+ * This class is a wrapper around the StracaInHandful class. It provides a simple way to interact with the service <%= service %>.
+ * 
+ * @see StracaInHandful
+ */
+export class <%= cap(service) %>StracaWrapper {
+
+    private straca: StracaInHandful;
+
+    constructor(straca:StracaInHandful) {
+        this.straca = straca;
+    }
+
+<% for(const op of operations) {%>
+    /**
+    * <%= op.rationale %> 
+    * Simply executes the operation
+    * @param payload <%= rat(op.payloadRationale,null,"any data") %>
+    * @returns <%= rat(op.responseRationale,null,"any data") %>
+    */
+    async <%=op.operation %>(payload: <%= tp(op.payload)%>): Promise<<%= tp(op.response)%>> {
+      const rv =  await this.straca.simpleFetch("<%= service%>","<%= op.operation %>",payload) as <%= tp(op.response)%>;
+      return rv;
+    }
+
+    /**
+    * <%= op.rationale %> 
+    * Just prepares the request to be executed later by fetch.
+    * @param payload <%= rat(op.payloadRationale,null,"any data") %>
+    * @param method HTTP method to be used
+    * @returns newly created request
+    */
+    <%=op.operation %>FormRequest(payload: <%= tp(op.payload)%>,method:string = "POST"): StracaStoreRequest<<%= tp(op.payload)%>> {
+        const rv = this.straca.formRequest("<%= service%>","<%= op.operation %>",method) as StracaStoreRequest<<%= tp(op.payload)%>>;
+        rv.data = payload;
+        return rv;
+    }
+
+    /**
+    * <%= op.rationale %> 
+    * Fetches the prepared request.
+    * @param request prepared Straca
+    * @returns <%= rat(op.responseRationale,"Straca response with data","Straca response with any data") %>
+    */
+    async <%=op.operation %>Fetch(request: StracaStoreRequest<<%= tp(op.payload)%>>): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
+      const rv =  await this.straca.fetch(request) as StracaStoreResponse<<%= tp(op.response)%>>;
+      return rv;
+    }
+
+    /**
+    * <%= op.rationale %> 
+    * Forms the request and  executes the operation
+    * @param payload <%= rat(op.payloadRationale,null,"any data") %>
+    * @param method HTTP method to be used
+    * @returns <%= rat(op.responseRationale,"Straca response with data","Straca response with any data") %>
+    */
+    async <%= op.operation %>FormFetch(payload: <%= tp(op.payload)%>,method:string = "POST"): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
+      const request = this.<%= op.operation %>FormRequest(payload,method);
+      return await this.<%= op.operation %>Fetch(request);
+    }
+
+<%}%>
+
+}
