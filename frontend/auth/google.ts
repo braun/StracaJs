@@ -361,14 +361,20 @@ export class GoogleAuth implements AuthenticationProvider
           q: `name='${name}'`
         });
         var ffile:gapi.client.drive.FileResource = null;
-       (<any> res.result).files.forEach(function(file:any) {
+       for(let file of (<any> res.result).files) {
          ffile = file;
          console.log('FOUND FILE',JSON.stringify(file,null,2))
-        });
+         break;
+        };
         if(ffile == null)
           return defaultVal;
         var getres = await gapi.client.drive.files.get(<any>{ fileId: ffile.id, alt: 'media'})
-        return getres.body;
+        if(getres.body)
+        {
+          const rv = JSON.parse(getres.body);
+          return rv;
+        }
+        return null;
       }
       /**
        * removes data from specified file from app data folder

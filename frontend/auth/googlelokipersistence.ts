@@ -1,6 +1,6 @@
 import { GoogleAuth } from "./google";
 
-export class GoogleDriveLokiPersistencecAdapter// implements LokiPersistenceAdapter
+export class GoogleDriveLokiPersistencecAdapter implements LokiPersistenceAdapter
 {
     auth: GoogleAuth;
  //   mode?: string;
@@ -20,7 +20,7 @@ export class GoogleDriveLokiPersistencecAdapter// implements LokiPersistenceAdap
             catch(ex)
             {
                 console.error("loadDatabase",ex);
-                callback(null);
+                callback(ex);
             }
         }
 
@@ -36,7 +36,7 @@ export class GoogleDriveLokiPersistencecAdapter// implements LokiPersistenceAdap
             catch(ex)
             {
                 console.error("deleteDatabase",ex);
-                callback(ex);
+                callback(null);
             }
         }
         doDelete();
