@@ -7,6 +7,8 @@ import { StracaStoreRequest, StracaStoreResponse } from '@straca/common/models/s
 import { StracaMessageStoreManager } from './stracastoremanager';
 import { StracaCaw } from './stracacaw';
 import * as ejs from 'ejs';
+import multer = require('multer');
+
 
 const TAG="STRACA";
 
@@ -33,10 +35,172 @@ export  class Straca
      */ 
     addService(service:StracaService)
     {
+    
+      const formHandlerKey = 
+         (serviceName:string,operationName:string) => `${serviceName}.${operationName}`;
       this.services[service.service] = service;
       for(const h of service.operations)
       {
-         this.handlers[`${service.service}.${h.operation}`] = h;
+         if(h == null)
+            continue;
+         try
+         {
+         let handle = h.handle;
+         this.handlers[formHandlerKey(service.service,h.operation)] = h;
+         let multerMiddleware :express.RequestHandler = (r,q,next:express.NextFunction)=>{ next(); };
+         if( h.multer != null)
+         {
+            
+            const multerOptions = h.multer?.options || {dest:this.datadir};
+            const multmid = h.multer?.multerMiddleware || ((multer)=>multer.any());
+            const m = multer(multerOptions);
+            (h as any)._multer = m;
+             multerMiddleware = (req,res,next)=>
+               {
+                  multmid(m)(req,res,()=>{
+                     (req as any).formFields = req.body;
+                     req.body = JSON.parse(req.body.data as string);
+                     next();
+                  });
+               }
+
+               // stracat handler wrapping middleware called when multer is used
+               handle = async (req,res,surrounding,expressReq,expressRes)=>{
+                  const mfiles= expressReq.files as { [fieldName:string]: Express.Multer.File[]};
+                  const files:{ [fieldName:string]: Express.Multer.File} = {}; 
+                  for(const key in mfiles)
+                  {
+                     surrounding.files[key] = mfiles[key][0];
+                  } 
+                  await h.handle(req,res,surrounding,expressReq,expressRes);
+               }
+         }
+
+    
+         
+         this.app.use(`/straca/${service.service}/${h.operation}`,
+            async (req,res,next)=>{
+               (req as any).surrounding = {
+                  files:{}, // files uploaded by multer  
+               }
+               next();
+            },
+            multerMiddleware,
+            async (req,res,next)=>{
+               try
+               {
+                  // for get encody body in url query param
+                  if(req.method == "GET")
+                  {
+                    const b =  req.query.body;
+                    if(b != null)
+                    {
+                      const qbody = JSON.parse(b as string);
+                      req.body = qbody;
+                    }
+                  }
+                  const body = req.body as any;
+                  const sreq = body as StracaStoreRequest;
+                  const servname = sreq.service|| req.params.service;
+                   const opname = sreq.operation|| req.params.operation;
+                 
+               
+                  const devid = sreq.deviceId;
+                  console.log(TAG,"CALL:",servname,opname,devid)
+   
+                 
+              
+                  const surrounding = (req as any).surrounding as StracaSurroundingData;
+                  const rv = await executeRequestLogic.bind(this)(handle,sreq,  surrounding);
+                  if(!rv.dontsend)
+                    this.sendJsonResult(res,rv);
+                  
+               }
+               catch(err)
+               {
+                     console.error(TAG,err);
+                     res.status(500);
+                     res.send(err);
+               }
+
+               async function executeRequestLogic(handle: StracaOperationHandler<any, any>, sreq: StracaStoreRequest<any>, surrounding: StracaSurroundingData)
+               {
+
+                  const rv: StracaStoreResponse = {
+                     operation: sreq.operation,
+                     oprationId: sreq.oprationId,
+                     ok: true,
+                     chainOk:true,
+                     data: null
+                  } 
+                  await handle(sreq, rv, surrounding, req, res);
+                 
+
+                  if (rv.ok && sreq.subrequest != null) {
+
+                     const subreq = sreq.subrequest as StracaStoreRequest;
+                     const subopname = subreq.operation ;
+                     const subservname = subreq.service;
+
+                     const coresult:CoRequest = {
+                        request: sreq,
+                        response: rv
+                     }
+
+                     if(surrounding.parentCoRequest == null)
+                     {
+                        // top level request
+                        surrounding.toplevelCoRequest = surrounding.parentCoRequest = coresult
+                     }
+                     else
+                     {
+                        // subrequest
+                        coresult.parent = surrounding.parentCoRequest;
+                        if(surrounding.parentCoRequest != null)   
+                           surrounding.parentCoRequest.subrequest = coresult;
+                     
+                     }
+
+                     const subhandler = this.handlers[formHandlerKey(subservname, subopname)];
+                     const parentResponse = surrounding.parentCoRequest?.response;  
+                   
+                     var subrv = null;
+                     if (subhandler != null) {
+                        surrounding.parentCoRequest = coresult;
+                         subrv = await executeRequestLogic.bind(this)(subhandler.handle,subreq, surrounding);
+
+                        rv.chainOk = subrv.ok;
+                        
+                        
+                     }
+                     else
+                     {
+                         subrv = {
+                           operation: subreq.operation,
+                           oprationId: subreq.oprationId,
+                           display: `Service ${subservname} not found`,
+                           comment: `Service ${subservname} not found`,
+                           ok: false,
+                           chainOk: false,
+                           data: undefined
+                        }
+                        rv.chainOk = false;
+                       
+                     }
+                     // chain output for calling client
+                     if(parentResponse != null)
+                        parentResponse.subresponse = subrv;
+                  }
+                  return rv;
+               }
+         });
+      }
+      catch(err)
+      {
+         console.error(TAG,"Error while adding service",service.service,err);
+       //  throw err;
+      }
+      
       }
 
       return this;
@@ -80,6 +244,7 @@ export  class Straca
 
     constructor(app:express.Express)
     {
+      const mult = multer();
         this.app = app;
         this.caw = new StracaCaw(this,"caw");
         this.addService(this.caw);
@@ -113,62 +278,7 @@ export  class Straca
          const text = await ejs.renderFile(join(this.assetdir,"clientstub.ejs"),service);
          res.send(text);
       });
-        this.app.use("/straca/:service/:operation",async (req,res,next)=>{
-            try
-            {
-               // for get encody body in url query param
-               if(req.method == "GET")
-               {
-                 const b =  req.query.body;
-                 if(b != null)
-                 {
-                   const qbody = JSON.parse(b as string);
-                   req.body = qbody;
-                 }
-               }
-               const body = req.body as any;
-               const sreq = body as StracaStoreRequest;
-               const servname = sreq.service;
-               const opname = sreq.operation;
-             
-            
-               const devid = sreq.deviceId;
-               console.log(TAG,"CALL:",servname,opname,devid)
-
-               const rv: StracaStoreResponse = {
-                  operation: sreq.operation,
-                  oprationId: sreq.oprationId,
-                  ok: true,
-                  data: null
-               }
-               const service = this.services[servname];
-               if(service == null)
-               {
-                  rv.ok = false;
-                  rv.comment = "service not found: "+servname;
-                  this.sendJsonResult(res,rv);
-                  return;
-               }
-               const handler = this.handlers[`${servname}.${opname}`];
-               if(handler == null)
-                  {
-                     rv.ok = false;
-                     rv.comment = "handler not found: "+opname;
-                     this.sendJsonResult(res,rv);
-                     return;
-                  }
-               await handler.handle(sreq,rv,req,res);
-               if(!rv.dontsend)
-                 this.sendJsonResult(res,rv);
-               
-            }
-            catch(err)
-            {
-                  console.error(TAG,err);
-                  res.status(500);
-                  res.send(err);
-            }
-      });
+       
    }
 
     /**
@@ -267,10 +377,24 @@ export interface StracaService
    operations:StracaOperation[];
 }
 
+export interface CoRequest
+{
+   request:StracaStoreRequest;
+   response:StracaStoreResponse;
+   parent?:CoRequest;
+   subrequest?:CoRequest;
+}
+export interface StracaSurroundingData
+{
+
+   files:{ [fieldName:string]: Express.Multer.File}
+   toplevelCoRequest?:CoRequest;
+   parentCoRequest?:CoRequest;
+}
 /**
- * handler (executioner) of a operation
+ * handler (executioner) of a upload operation
  */
-export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>,res:StracaStoreResponse<R>,expressReq:express.Request,expressRes:express.Response)=> Promise<void>
+export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>, res:StracaStoreResponse<R>,surrounding:StracaSurroundingData,expressReq:express.Request,expressRes:express.Response)=> Promise<void>
 
 
 /**
@@ -302,9 +426,29 @@ export interface StracaOperation
 
    /**
     * handler of operation
+    * meaningful service should have defined the handle or upload handler
     */
-   handle:StracaOperationHandler;
+   handle?:StracaOperationHandler;
 
+
+
+   /**
+    * customization of multer handling upload process
+    */
+   multer?: {
+      /**
+     * options for constructor of multer handling the call
+     */
+     options?:multer.Options ;
+     /**
+       * Allows custimization of multer middleware. This is place to manually call .any .fields .single on multer
+       * @param multer multer to handle requests
+       * @returns middleware to be passed to express use chain 
+       */
+     multerMiddleware?:(multer:multer.Multer)=>express.RequestHandler;
+   } 
+
+   
 }
 
 /**

@@ -42,13 +42,17 @@ export class <%= cap(service) %>StracaWrapper {
     }
 
 <% for(const op of operations) {%>
+    
+    <% const fd = op.multer != null %>
+        
+        %>
     /**
     * <%= op.rationale %> 
     * Simply executes the operation
     * @param payload <%= rat(op.payloadRationale,null,"any data") %>
     * @returns <%= rat(op.responseRationale,null,"any data") %>
     */
-    async <%=op.operation %>(payload: <%= tp(op.payload)%>): Promise<<%= tp(op.response)%>> {
+    async <%=op.operation %>(payload: <%= tp(op.payload)%><% if(fd) {%>,fd:FormData<%}%>): Promise<<%= tp(op.response)%>> {
       const rv =  await this.straca.simpleFetch("<%= service%>","<%= op.operation %>",payload) as <%= tp(op.response)%>;
       return rv;
     }
@@ -72,8 +76,8 @@ export class <%= cap(service) %>StracaWrapper {
     * @param request prepared Straca
     * @returns <%= rat(op.responseRationale,"Straca response with data","Straca response with any data") %>
     */
-    async <%=op.operation %>Fetch(request: StracaStoreRequest<<%= tp(op.payload)%>>): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
-      const rv =  await this.straca.fetch(request) as StracaStoreResponse<<%= tp(op.response)%>>;
+    async <%=op.operation %>Fetch(request: StracaStoreRequest<<%= tp(op.payload)%>><% if(fd) {%>,fd:FormData<%}%>): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
+      const rv =  await this.straca.fetch(request<% if(fd) {%>,fd<%}%>) as StracaStoreResponse<<%= tp(op.response)%>>;
       return rv;
     }
 
@@ -84,9 +88,9 @@ export class <%= cap(service) %>StracaWrapper {
     * @param method HTTP method to be used
     * @returns <%= rat(op.responseRationale,"Straca response with data","Straca response with any data") %>
     */
-    async <%= op.operation %>FormFetch(payload: <%= tp(op.payload)%>,method:string = "POST"): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
+    async <%= op.operation %>FormFetch(payload: <%= tp(op.payload)%><% if(fd) {%>,fd:FormData<%}%>,method:string = "POST"): Promise<StracaStoreResponse<<%= tp(op.response)%>>> {
       const request = this.<%= op.operation %>FormRequest(payload,method);
-      return await this.<%= op.operation %>Fetch(request);
+      return await this.<%= op.operation %>Fetch(request<% if(fd) {%>,fd<%}%>);
     }
 
 <%}%>

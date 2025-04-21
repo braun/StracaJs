@@ -42,6 +42,9 @@ export interface StracaStoreRequest<T=any>
 
     /** data/parameters of the request, actuall type depends on the called operation */
     data?:T;
+
+    /** allows chaining requests */
+    subrequest?:StracaStoreRequest;
 }
 
 /**
@@ -50,6 +53,7 @@ export interface StracaStoreRequest<T=any>
  */
 export interface StracaStoreResponse<T=any>
 {
+
     /**
      * operation name from request
      */
@@ -65,6 +69,11 @@ export interface StracaStoreResponse<T=any>
      */
     ok:boolean;
 
+    /**
+     * status code of the chained operation
+     */
+
+    chainOk: boolean;
     /**
      * displayable error text
      */
@@ -86,4 +95,8 @@ export interface StracaStoreResponse<T=any>
     dontsend?:boolean
 
 
+    /**
+     *  chained responses
+     */
+    subresponse?:StracaStoreResponse;
 }

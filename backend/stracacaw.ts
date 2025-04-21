@@ -22,7 +22,7 @@ export class StracaCaw extends StracaServiceBase {
         /**
          * SSE will connect to this endpoint
          */
-        this.addHandler("listen",async (stracaReq,stracaRes,req,res)=>{
+        this.addHandler("listen",async (stracaReq,stracaRes,sur,req,res)=>{
             res.setHeader('Cache-Control', 'no-cache');
             res.setHeader('Content-Type', 'text/event-stream');
             res.setHeader('Access-Control-Allow-Origin', '*');
@@ -66,7 +66,7 @@ export class StracaCaw extends StracaServiceBase {
          /** 
           * handles subscription of events
          */
-         this.addHandler("subscribe",async (stracaReq:StracaStoreRequest,stracaRes,req,res)=>{
+         this.addHandler("subscribe",async (stracaReq:StracaStoreRequest,stracaRes,sur,req,res)=>{
             const client = this.map[stracaReq.deviceId];
             if(client == null)
             {

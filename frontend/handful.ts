@@ -129,11 +129,11 @@ export class StracaInHandful
      * @param requestData data to send
      * @returns operation result data
      */
-    async simpleFetch(service:string,operation:string,requestData?:any)
+    async simpleFetch(service:string,operation:string,requestData?:any,formData?:FormData):Promise<any>
     {
         const req = this.formRequest(service,operation);
         req.data = requestData;
-        const res = await this.fetch(req);
+        const res = await this.fetch(req,formData);
         const rv = res.ok ? res.data: null;
         return rv;
     }
@@ -144,16 +144,32 @@ export class StracaInHandful
 
      * @returns response from server or dummy response in case of http error
      */
-    async fetch(req:StracaStoreRequest):Promise<StracaStoreResponse>
+    async fetch(req:StracaStoreRequest,formData?:FormData):Promise<StracaStoreResponse>
     {
         const h:Headers = new Headers();
-        h.append('content-type','application/json');
+      
         if(req.method == null)
             req.method = "POST";
 
+      
+
+        if(formData != null)
+        {
+            const fd = new FormData();
+            fd.append('data',JSON.stringify(req));
+            for(const e of formData.keys())
+            {
+                fd.append(e,formData.get(e));
+           
+            }
+            formData = fd;
+          //  h.append('content-type','multipart/form-data');
+        }
+        else
+           h.append('content-type','application/json');
         const url = this.formUrlForRequest(req);
         const rv = await fetch(url,{
-            body: JSON.stringify(req),
+            body: formData == null ? JSON.stringify(req): formData,
             headers: h,
             method:req.method,
             
@@ -166,6 +182,7 @@ export class StracaInHandful
                 operation:req.operation,
                 oprationId:req.oprationId,
                 ok:false,
+                chainOk:false,
                 data:null,
                 comment:comment
             };
@@ -176,4 +193,5 @@ export class StracaInHandful
         return res;
     }
 
+      
 }
