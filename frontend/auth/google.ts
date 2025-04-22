@@ -54,6 +54,7 @@ export interface AppSpec
   secret?:string,
   scopes?:string[],
   useAuthentification?:boolean
+  useAuthorization?:boolean
 }
 
 export interface GoogleProfile
@@ -100,10 +101,13 @@ export class GoogleAuth implements AuthenticationProvider
     {
       return this.appid.useAuthentification == true;
     }
-
+    get useAuthorization()
+    {
+      return this.appid.useAuthorization == true;
+    }
     constructor(appid:AppSpec)
     {
-        this.appid = appid;
+        this.appid = Object.assign({useAuthorizationa:true},appid);
     
         if(appid.useAuthentification)
            this.initClient();
@@ -154,10 +158,13 @@ export class GoogleAuth implements AuthenticationProvider
                 console.log("decoded",JSON.stringify(decoded,null,2))
                 this.credentials = decoded as GoogleProfile;
                 this.credentials.id = this.credentials.sub;
-              this.fireLoginCallback();
+               this.fireLoginCallback();
            //     this.client.requestAccessToken();
-                this.initTokenClient();
-                this.authorize();
+              if(this.useAuthorization)
+              {
+                    this.initTokenClient();
+                    this.authorize();
+              }
             }
           });
          

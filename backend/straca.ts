@@ -8,11 +8,17 @@ import { StracaMessageStoreManager } from './stracastoremanager';
 import { StracaCaw } from './stracacaw';
 import * as ejs from 'ejs';
 import multer = require('multer');
+import { ISessionKeyPayload } from './stracauth';
 
 
 const TAG="STRACA";
 
 
+
+export interface StracaExpressRequest extends express.Request
+{
+   user?: ISessionKeyPayload
+}
 
 
 
@@ -394,7 +400,7 @@ export interface StracaSurroundingData
 /**
  * handler (executioner) of a upload operation
  */
-export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>, res:StracaStoreResponse<R>,surrounding:StracaSurroundingData,expressReq:express.Request,expressRes:express.Response)=> Promise<void>
+export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>, res:StracaStoreResponse<R>,surrounding:StracaSurroundingData,expressReq:StracaExpressRequest,expressRes:express.Response)=> Promise<void>
 
 
 /**
