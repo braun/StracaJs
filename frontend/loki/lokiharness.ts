@@ -156,9 +156,16 @@ export class LokiHarness
     /**
      * deletes and closes the db, this instance cannot be used more
      */
-    delete()
+    async delete()
     {
-        this.Db.deleteDatabase(null,()=>this.close())
+        const rv = new Promise<void>((resolve, reject) =>
+        {
+            this.Db.deleteDatabase(null,()=>{
+                this.close();
+                resolve();
+            });
+        });
+        return rv;
     }
     
     get Db()
