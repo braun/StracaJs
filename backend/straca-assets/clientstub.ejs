@@ -41,7 +41,10 @@ export class <%= cap(service) %>StracaWrapper {
         this.straca = straca;
     }
 
-<% for(const op of operations) {%>
+<% for(const op of operations) {
+    if(op == null) 
+        continue;
+    %>
     
     <% const fd = op.multer != null %>
         

@@ -28,6 +28,7 @@ export interface StracaExpressRequest extends express.Request
  */
 export  class Straca
 {
+ 
     app:express.Express
     stracastore:StracaStore;
     caw:StracaCaw;
@@ -212,6 +213,19 @@ export  class Straca
       return this;
     }
 
+    /**
+     * Installs express middleware to be used for all requests to straca services 
+     * Intended for authentication, logging etc.
+     * @param mw express middleware to be used for all requests to straca
+     */
+    installFilterMiddleware(mw: express.RequestHandler) {
+      
+         this.app.use("/straca",(req,res,next)=>{
+            if(req.url.indexOf("/straca/doc") > -1)
+               next();
+            mw(req,res,next);
+         });
+    }
     /**
      * Creates service configurator for a service.
      * Service is created when not exists

@@ -17,7 +17,7 @@ export function createAuthView(title:string, bat:AuthenticationProviderBattery)
 {
     const layout = PLAINLAYOUT('authlistview')
         .header(HPANELSB().stack([
-            IMG('logo').srcbinder(()=>"resources/logo.svg"),H3T(title)
+            IMG('logo').srcbinder(()=>"/resources/logo.svg"),H3T(title)
             ]))
         .content(
             VCONT('authpanel').stack([

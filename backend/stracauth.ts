@@ -4,29 +4,10 @@ import { StracaStoreRequest, StracaStoreResponse } from "@straca/common/models/s
 import * as jwt from 'jsonwebtoken';
 import * as ms from 'ms';
 import * as express from 'express';
+import { IAuthPayload, IAuthResponse, IProviderResult } from "@straca/common/auth/securitymodels";
 
 const TAG = "StracaAuthManager";
-export interface  IAuthPayload<T = any>
-{
-    provider:string;
-    providerData:T;
-}
 
-export interface IAuthResponse
-{
-    sessionToken:string;
-    userId:string;
-    provider:string;
-  
-}
-export interface IProviderResult
-{
-    isValid:boolean;
-    message?:string;
-    userId:string;
-    provider:string;
-    providerData?:any;
-}
 export interface IStracaAuthProvider
 {
     validate(payload:IAuthPayload):Promise<IProviderResult>;
@@ -61,6 +42,7 @@ export class StracaAuthManager
 
     installAuthService()
     {
+        this.straca.installFilterMiddleware(this.middleware());
         this.straca.addService({
             service: "security",
             rationale:"Authentication service",
@@ -132,14 +114,21 @@ export class StracaAuthManager
         });
         return rv;
     }
-    middleware() {
-        return async (req:express.Request, res:express.Response,next: express.NextFunction) => {
+     middleware() {
+        return async  (req:express.Request, res:express.Response,next: express.NextFunction) => {
+
+            if (req.path === '/security/auth') {
+                 next(); // pokud je to autentizace, pokračuj dál
+                 return;
+            }
             const authHeader = req.headers['authorization'];
             const token = authHeader && authHeader.split(' ')[1]; // očekává Bearer TOKEN
           
             if (!token) 
-                return res.sendStatus(401);
-          
+            {
+                res.sendStatus(401);
+                return ;
+            }
             const valid = await this.validateSessionToken(req,token);
             if(!valid) {
                 console.log(TAG,`Invalid sesion token ${token}`);

@@ -6,6 +6,8 @@ import { AuthCallback, AuthenticationProvider, ProviderCallback } from "./provid
 import { HCONTSB } from "hejl/base/containers";
 import { IMG } from "hejl/base/image";
 import { Callbacker } from "../callbacker";
+import { IAuthPayload } from "../../common/auth/securitymodels";
+import { IGoogleTokenPayload } from "../../common/auth/google/googlemodels";
 
 declare global {
     var google:any;
@@ -114,6 +116,15 @@ export class GoogleAuth implements AuthenticationProvider
         else
           this.initTokenClient();
     }
+  getStracaAuthPayload(): IAuthPayload {
+   const rv:IAuthPayload<IGoogleTokenPayload> = {
+     provider: "google",
+     providerData: {
+      tokenToValidate:this._jwtToken
+    }
+   }
+   return rv;
+  }
 
     relogin(): boolean {
       this.issuePrompt();
@@ -139,6 +150,7 @@ export class GoogleAuth implements AuthenticationProvider
       return "google";
     }
 
+    protected _jwtToken:string = null;
     /** 
      * inits the google identity api 
      * */
@@ -154,6 +166,8 @@ export class GoogleAuth implements AuthenticationProvider
         auto_select: true,
             callback: (response:any)=>
             {
+              this._jwtToken = response.credential;
+              console.log("got JWT token",this._jwtToken)
               const decoded = jwtDecode(response.credential)
                 console.log("decoded",JSON.stringify(decoded,null,2))
                 this.credentials = decoded as GoogleProfile;

@@ -5,6 +5,7 @@ import { UrlStore } from "./urlstore";
 import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../common/models/stracadefs";
 import { MessageLoadRequestBuilder } from "../common/mstorequery";
 import { CawListener } from "./cawlistener";
+import { AuthenticationProviderBattery } from "./auth/provider";
 
 
 const APPTOKEN = "apptoken";
@@ -26,6 +27,7 @@ export class StracaInHandful
     caw:CawListener;
 
     options:StracaOptions;
+    auth: AuthenticationProviderBattery;
 
     constructor(opts?:StracaOptions)
     {
@@ -153,6 +155,12 @@ export class StracaInHandful
 
       
 
+        if(this.auth != null)
+        {
+            const token = await this.auth.getSessionToken(req);
+            if(token != null)
+                h.append("Authorization",token);
+        }
         if(formData != null)
         {
             const fd = new FormData();
@@ -174,6 +182,19 @@ export class StracaInHandful
             method:req.method,
             
         });
+        if(rv.status == 401 || rv.status == 403)
+        {
+            console.error(TAG,"Unauthorized access, please login again");
+            this.auth.sessionToken = null;
+            return {
+                operation:req.operation,
+                oprationId:req.oprationId,
+                ok:false,
+                chainOk:false,
+                data:null,
+                comment:"Unauthorized access, please login again"
+            };
+        }
         if(!rv.ok)
         {
             const comment = `Call ${req.operation} failed with HTTP status ${rv.status}`

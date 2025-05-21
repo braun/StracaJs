@@ -1,5 +1,6 @@
-import { IAuthPayload, IProviderResult, IStracaAuthProvider } from "@straca/backend/stracauth";
+import {  IStracaAuthProvider } from "@straca/backend/stracauth";
 import { IGoogleTokenPayload } from "@straca/common/auth/google/googlemodels";
+import { IAuthPayload, IProviderResult } from "@straca/common/auth/securitymodels";
 import { OAuth2Client } from 'google-auth-library';
 
 
