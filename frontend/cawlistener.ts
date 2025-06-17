@@ -120,6 +120,7 @@ export class CawListener
             async onopen(response) {
                 if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
                  {
+                    console.error("Caw","opened!")
                     // clear the callbacks, should be readded by subscribe in onOpen handlers
                     caw.callbacks = {};
                     await caw.lifecycleCallbacker.fire((cb)=>cb.onOpen());  
@@ -162,6 +163,7 @@ export class CawListener
             },
             onclose() {
                 // if the server closes the connection unexpectedly, retry:
+                console.error("Caw","closed!")
                 throw new RetriableError();
             },
             onerror(err) {
@@ -190,6 +192,94 @@ export class CawListener
        
       
     });
+    return rv;
+    }
+
+    /**
+     * connects to cawservice on straca server by EventSource object.
+     * Establishes SSE channel to receive events of straca server
+     */
+    async listenSSE(lifecycleListener:CawLifecycleListener):Promise<void>
+    {
+        if(lifecycleListener != null)
+            this.lifecycleCallbacker.addListener(lifecycleListener);
+        const rv = new Promise<void>( (resolve,reject)=>{
+        const req =  this.straca.formRequest(this.serviceId,"listen","GET");
+
+        const url = this.straca.formUrlForRequest(req);
+        this.eventAbortController =  new AbortController();
+        const caw = this;
+         const srcPromise =  new EventSource(url);
+
+         srcPromise.onopen = async (response) => {
+                // if (response. && response.headers.get('content-type') === EventStreamContentType) {
+                //  {
+                //     console.error("Caw","opened!")
+                    // clear the callbacks, should be readded by subscribe in onOpen handlers
+                    caw.callbacks = {};
+                    await caw.lifecycleCallbacker.fire((cb)=>cb.onOpen());  
+                    resolve();
+                    return; // everything's good
+                // }  
+                // } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                //     // client-side errors are usually non-retriable:
+                //     throw new FatalError();
+                // } else {
+                //     throw new RetriableError();
+                // }
+            }
+
+        srcPromise.onmessage = async (msg) => {
+                // if the server emits an error message, throw an exception
+                // so it gets handled by the onerror callback below:
+                // if (msg.event === 'FatalError') {
+                //     throw new FatalError(msg.data);
+                // }
+
+                const data = JSON.parse(msg.data)
+                const evres = data.data as StracaStoreResponse;
+                const evid = evres.operation;
+                for(const cbsk in caw.callbacks)
+                {
+    
+                if(!evid.startsWith(cbsk))
+                    continue;
+                const cbs = caw.callbacks[cbsk];
+                for(const cb of cbs)
+                    try
+                    {
+                      await cb(evres);  
+                    }
+                    catch(err)
+                    {
+                        console.error("onCaw",err);
+                    }         
+                }
+            }
+            
+          
+           srcPromise.onerror = (err)=> {
+                console.error("Caw",err)
+                if (err instanceof FatalError) {
+                    throw err; // rethrow to stop the operation
+                } else {
+                    // do nothing to automatically retry. You can also
+                    // return a specific retry interval here.
+                }
+            }
+        });
+
+       
+        
+        // firefox does not fire the onopen event
+        // const removeto =   setTimeout(()=>resolve(null),1000);
+        // this.srcPromise.onopen=(e:Event)=>{
+        //     clearTimeout(removeto);
+        //     resolve(null);
+        // };
+       
+        //srcPromise.
+    
     return rv;
     }
 

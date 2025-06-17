@@ -6,6 +6,7 @@ import { StracaOperations, StracaStoreRequest, StracaStoreResponse } from "../co
 import { MessageLoadRequestBuilder } from "../common/mstorequery";
 import { CawListener } from "./cawlistener";
 import { AuthenticationProviderBattery } from "./auth/provider";
+import { ConfigsStracaWrapper } from "./configsWrapper";
 
 
 const APPTOKEN = "apptoken";
@@ -29,6 +30,7 @@ export class StracaInHandful
     options:StracaOptions;
     auth: AuthenticationProviderBattery;
 
+    configs: ConfigsStracaWrapper;
     constructor(opts?:StracaOptions)
     {
         this.options = {
@@ -37,6 +39,7 @@ export class StracaInHandful
         if(opts != null)
             this.options = Object.assign(this.options,opts);
 
+        this.configs = new ConfigsStracaWrapper(this);
         this.messageStore = new UrlStore(this);
         this.caw = new CawListener(this);
     }
