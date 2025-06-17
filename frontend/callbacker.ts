@@ -10,11 +10,20 @@ export class Callbacker<T>
     /**
      * Adds listener to list
      * @param listener listener to add
+     * @returns function to remove the listener
      */
     addListener(listener:T)
     {
         if(this.listeners.indexOf(listener) == -1)
             this.listeners.push(listener);
+
+        return ()=> {
+           const idx = this.listeners.indexOf(listener);
+           if(idx != -1)
+           {
+               this.listeners.splice(idx,1);
+           }
+        }
     }
 
     /**

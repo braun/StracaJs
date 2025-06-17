@@ -10,6 +10,7 @@ import * as ejs from 'ejs';
 import multer = require('multer');
 import { ISessionKeyPayload } from './stracauth';
 import { ServiceConfigurator } from './serviceconfigurator';
+import { StracaConfigs } from './stracaconfigs';
 
 
 const TAG="STRACA";
@@ -32,6 +33,7 @@ export  class Straca
  
     app:express.Express
     stracastore:StracaStore;
+    configs:StracaConfigs;
     caw:StracaCaw;
     protected services:{[key:string]:StracaService} = {}
     protected handlers:{[key:string]:StracaOperation} = {}
@@ -219,6 +221,7 @@ export  class Straca
      * Intended for authentication, logging etc.
      * @param mw express middleware to be used for all requests to straca
      */
+    
     installFilterMiddleware(mw: express.RequestHandler) {
       
          this.app.use("/straca",(req,res,next)=>{
@@ -267,6 +270,7 @@ export  class Straca
     {
       const mult = multer();
         this.app = app;
+        this.configs = new StracaConfigs(this);
         this.caw = new StracaCaw(this,"caw");
         this.addService(this.caw);
 

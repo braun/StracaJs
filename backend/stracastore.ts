@@ -99,7 +99,7 @@ export class StracaStore implements StracaService
                 const rqdata = req.data;
                 const mtype = rqdata.example.meta.messageType;
                 console.log(TAG,"LOAD MESSAGE(s)", mtype, rqdata.example.meta.messageUid);
-                const loaded = await mstore.loadByExample(rqdata);
+                const loaded:any = {data:null};//await mstore.loadByExample(rqdata);
                 if(mtype != null && (loaded.data == null || loaded.data.length == 0))
                 {
                     const rec = this.mtManager.findMessageType(mtype);
