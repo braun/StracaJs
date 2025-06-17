@@ -9,6 +9,7 @@ import { StracaCaw } from './stracacaw';
 import * as ejs from 'ejs';
 import multer = require('multer');
 import { ISessionKeyPayload } from './stracauth';
+import { ServiceConfigurator } from './serviceconfigurator';
 
 
 const TAG="STRACA";
@@ -378,7 +379,21 @@ export  class Straca
 /**
  * General interface of service installed in Straca
  */
-export interface StracaService
+export interface StracaService extends StracaServiceDescription
+{
+   
+
+   /**
+    * list of operations provided by service
+    */
+   operations:StracaOperation[];
+}
+
+/**
+ * Description texts of service
+ * Can be used to generate client stubs, documentation etc.
+ */
+export interface StracaServiceDescription
 {
    /**
     * service name
@@ -390,13 +405,7 @@ export interface StracaService
     * description of service
     */
    rationale?:string;
-
-   /**
-    * list of operations provided by service
-    */
-   operations:StracaOperation[];
 }
-
 export interface CoRequest
 {
    request:StracaStoreRequest;
@@ -418,15 +427,12 @@ export type StracaOperationHandler<T=any,R=any> = (req:StracaStoreRequest<T>, re
 
 
 /**
- * operation provided by service
+ * Text description of operation provided by service
+ * Can be used to generate client stubs, documentation etc.
  */
-export interface StracaOperation
+export interface StracaOperationDescription
 {
-   /**
-    * name of operation
-    * Can be part of URL called by client
-    */
-   operation:string;
+   
 
    /**
     * description of operation
@@ -434,16 +440,28 @@ export interface StracaOperation
    rationale?:string;
 
    /** TS interface of json data */
-   payload?:any;
+   payload?:string;
    /** short comment to payload  data*/
    payloadRationale?:string;
 
    /** TS interface of json response data */
-   response?:any;
+   response?:string;
 
    /** short comment to response data */
    responseRationale?:string;
+}
+/**
+ * operation provided by service
+ */
+export interface StracaOperation extends StracaOperationDescription
+{
 
+   /**
+    * name of operation
+    * Can be part of URL called by client
+    */
+   operation:string;
+   
    /**
     * handler of operation
     * meaningful service should have defined the handle or upload handler
@@ -469,48 +487,4 @@ export interface StracaOperation
    } 
 
    
-}
-
-/**
- * Utility class to configure and build service
- */
-
-export class ServiceConfigurator
-{
-   service:StracaService;
-
-   constructor(service:StracaService)
-   {
-      this.service = service;
-   }
-
-   /**
-    * Adds or replaces operation in service
-    * @param operation operation to be added
-    * @param handler handler for a service
-    * @param rationale description of operation
-    * @param payload TS class or string name of interface of json data
-    * @param response TS class or string name of interface of json response data
-    * @returns this
-    */
-   operation(operation:string,handler:StracaOperationHandler,rationale:string,payload?:any,response?:any)
-   {
-      var op:StracaOperation = this.service.operations.find((op)=>op.operation == operation);
-      if(op == null)
-      {
-         op = {
-            operation:operation,
-            handle:handler,
-            rationale:rationale
-         }
-         this.service.operations.push(op);
-      }
-      op.handle = handler;
-      op.rationale = rationale;
-      op.payload = payload;
-      op.response = response;
-
-     
-      return this;
-   }
 }

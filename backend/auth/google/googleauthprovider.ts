@@ -23,6 +23,10 @@ export class GoogleAuthProvider implements IStracaAuthProvider
 
     async validate(authpayload: IAuthPayload<IGoogleTokenPayload>): Promise<IProviderResult> {
         try {
+             if(authpayload.provider !== "google")
+              {
+                  return {isValid:false,message:"Invalid provider",userId:"",provider:"email",providerData:null};
+              }
             const { tokenToValidate } = authpayload.providerData;
             const ticket = await this.client.verifyIdToken({
               idToken: tokenToValidate,

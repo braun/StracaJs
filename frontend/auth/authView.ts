@@ -3,6 +3,7 @@ import { AuthenticationProvider, AuthenticationProviderBattery } from "./provide
 import { PLAINLAYOUT } from "hejl/topnest/plainlayout";
 import { IMG } from "hejl/base/image";
 import { H3T, STRONGT } from "hejl/base/hejlHtmlTags";
+import { T } from "hejl/base/hejli18n";
 
 export function createAuthPanel(bat:AuthenticationProviderBattery)
 {
@@ -23,7 +24,7 @@ export function createAuthView(title:string, bat:AuthenticationProviderBattery)
             VCONT('authpanel').stack([
                 VCONT('authcard').class('card')
                     .stack([
-                        STRONGT('Continue with:'),createAuthPanel(bat)])
+                        STRONGT(T('Continue with:')),createAuthPanel(bat)])
             ]));
 
         return layout;

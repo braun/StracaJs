@@ -82,12 +82,14 @@ export class StracaAuthManager
                                     
                                  
                                     console.log(TAG,`Authentication successful for user ${userId} with provider ${result.provider}` );
-                                    return;
+                                    return; // authentication successful, exit loop
                                 }
-                                     console.log(TAG,`Authentication failed for user ${req.data.providerData} with provider ${result.provider}`);
-                                    return;
+                                     console.log(TAG,`Authentication failed for user ${JSON.stringify(req.data.providerData,null,2)} with provider ${result.provider}`);
+                                    
                                 
                             }
+                            res.ok = false;
+                            res.comment = "Authentication failed, no valid provider found";
                     }
                 }
             ]

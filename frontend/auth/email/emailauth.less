@@ -1,0 +1,51 @@
+.emailauthbutton
+{
+        background-color: white;
+    width: 100%;
+    padding: 6px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    -webkit-transition: background-color .218s, border-color .218s;
+    transition: background-color .218s, border-color .218s;
+    -webkit-user-select: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #dadce0;
+    color: #3c4043;
+    cursor: pointer;
+    font-family: "Google Sans", arial, sans-serif;
+    font-size: 14px;
+    height: 40px;
+    letter-spacing: 0.25px;
+    outline: none;
+    overflow: hidden;
+  
+    position: relative;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    /* width: auto; */
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+
+    &:hover
+    {
+      box-shadow: none;
+      border-color: rgb(210, 227, 252);
+        outline: none;
+        background: rgba(66, 133, 244, .08);
+    }
+
+    &:active
+    {
+        box-shadow: none;
+      border-color: var(--activecolor);
+        outline: none;
+        background: rgba(66, 133, 244, .08);
+    }
+}
