@@ -7,13 +7,13 @@ import { StracaStoreRequest, StracaStoreResponse } from "@straca/common/models/s
 import * as express from 'express';
 import { IOrmCrudServicePaginator } from "@straca/common/models/ormquery";
 
-export interface IOrmCrudServiceOptions<T>
+export interface IOrmCrudServiceOptions<I,T extends I>
 {
     entityClass: Function | string,
     entityInterface: string,
     entityDocumentationName: string,
-    entityKey: (e:T)=>FindOptionsWhere<T>,
-    readKey: (e:StracaStoreRequest<T>)=>FindOptionsWhere<T>,
+    entityKey: (e:I)=>FindOptionsWhere<T>,
+    readKey: (e:StracaStoreRequest<I>)=>FindOptionsWhere<T>,
   
     typeorm:TypeormWrapper,
     serviceDescription: StracaServiceDescription,
@@ -30,7 +30,7 @@ export interface IOrmCrudServiceOperationOptions<T>
 }
 
 
-export class OrmCrudService<T> 
+export class OrmCrudService<I,T extends I> 
 {
    
     serviceConfigurator:ServiceConfigurator
@@ -38,36 +38,45 @@ export class OrmCrudService<T>
     straca:Straca;
     typeorm:TypeormWrapper;
     entityClass: Function | string;
-    options: IOrmCrudServiceOptions<T>;
+    options: IOrmCrudServiceOptions<I,T>;
     get repository() {
         return this.typeorm.dataSource.getRepository<T>(this.entityClass);
     }
 
-    constructor(straca:Straca, options: IOrmCrudServiceOptions<T>) {
+    constructor(straca:Straca, options: IOrmCrudServiceOptions<I,T>) {
         this.straca = straca;
         this.typeorm = options.typeorm;
         this.entityClass = options.entityClass;
         this.options = options;
     }
 
-    async create(entity: T) {
+    async create(entity: I) {
+        this.normalizeKey(entity);
         const rv =  await this.repository.insert(entity as QueryDeepPartialEntity<T>);
         return rv;
+    }
+
+     normalizeKey(entity: I) {
+        const k = this.options.entityKey(entity);
+        Object.assign(entity, k);
+        return k;
     }
 
     async read(id: FindOptionsWhere<T>): Promise<T | null> {
         return await this.repository.findOneBy(id);
     }
 
-    async update( entity: T): Promise<T> {
-       const k =  this.options.entityKey(entity)
+    async update( entity: I): Promise<T> {
+            const k = this.normalizeKey(entity);
+       
         await this.repository.update(k, entity as QueryDeepPartialEntity<T>);
        const rv =  await this.read(k);
        return rv;
     }
 
-    async delete( entity: T): Promise<void> {
-         const k =  this.options.entityKey(entity)
+    async delete( entity: I): Promise<void> {
+         const k =  this.normalizeKey(entity);
+       
         const res = await this.repository.softDelete(k);
         return res.raw.affectedRows;
     }
@@ -79,7 +88,7 @@ export class OrmCrudService<T>
 
     async createHandler(req:StracaStoreRequest, res:StracaStoreResponse, surrounding:StracaSurroundingData, expressReq:StracaExpressRequest,expressRes:express.Response)  {
                       
-        const e = req.data as T;
+        const e = req.data as I;
         const result = await this.create(e);
        const k = this.options.entityKey(e);
         res.data = await this.read(k);

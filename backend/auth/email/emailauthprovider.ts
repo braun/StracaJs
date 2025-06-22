@@ -53,7 +53,7 @@ export class EmailAuthProvider implements IStracaAuthProvider
                 handle: async (req:StracaStoreRequest<IEmailOtpPayload>,
                                 res:StracaStoreResponse<IEmailChallengeResponse>,surroundings,ereq,eres) =>
                 {
-                    const email = req.data.email;
+                    const email = req.data.email?.toLocaleLowerCase();
                     if(email == null || email.length === 0)
                     {
                         res.ok = false;
@@ -106,7 +106,7 @@ export class EmailAuthProvider implements IStracaAuthProvider
                 handle: async (req:StracaStoreRequest<IEmailOtpPayload>,
                                 res:StracaStoreResponse<IEmailOtpVerificationResponse>,surroundings,ereq,eres) =>
                 {
-                    const email = req.data.email;
+                    const email = req.data.email?.toLocaleLowerCase();
                     const otp = req.data.enteredPin;
                     if(email == null || email.length === 0 || otp == null )
                     if(email == null || email.length === 0)

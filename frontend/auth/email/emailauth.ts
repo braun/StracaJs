@@ -46,7 +46,7 @@ export class EmailAuthButton extends HejlDIV
         .stack([
           labeled(INPUT('emailinput').type('email').placeholder('Zadejte svůj E-mail')
            .textBinder([() => this.auth.enteredEmail || '',
-            (v:string) => this.auth.enteredEmail = v
+            (v:string) => this.auth.enteredEmail = v?.toLocaleLowerCase()
             ]), 'E-mail')
            
             ])]);
@@ -57,7 +57,7 @@ export class EmailAuthButton extends HejlDIV
             app.showDialog(ALERTDIALOG('E-mail je povinný',app).title('Chyba'));
             return;
           }
-          const payload:IEmailOtpPayload = { email:email };
+          const payload:IEmailOtpPayload = { email:email.toLocaleLowerCase() };
           const res = await this.auth.ops.sendEmailChallengeFormFetch(payload);
           if(!res.ok)
           {
@@ -138,7 +138,7 @@ export class EmailAuth implements AuthenticationProvider
     this._jwtToken = rv.data.jwtToken;
     this.credentials = 
     {
-      email: rv.data.email,
+      email: rv.data.email.toLocaleLowerCase(),
       createdAt: new Date(),
     }
     this.fireLoginCallback();
@@ -168,7 +168,7 @@ export class EmailAuth implements AuthenticationProvider
       return rv;
     }
     renderUserInfo(): HejlElement {
-      const rv = HCONTSB('googleinfo').stack([SPAN('name').textBinder(()=>this.credentials.email)]);
+      const rv = HCONTSB('userinfostrip').stack([SPAN('name').textBinder(()=>this.credentials.email)]);
       return rv;
     }
     addProviderCallback(cb: ProviderCallback): void {

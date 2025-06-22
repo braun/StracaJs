@@ -6,6 +6,7 @@
     .card
     {
         border-color: var(--domcolor);
+        background-color: var(--invdomcolor);
         padding: 2em;
         strong
         {
@@ -33,6 +34,46 @@
         .logo
         {
             width: 50px;
+        }
+    }
+}
+
+.authmini
+{
+    position:relative;
+    z-index: 1;
+    padding: 0;
+    .userinfostrip
+    {
+        cursor: pointer;
+        &:active
+        {
+            background-color: var(--domcolor);
+        }
+    }
+    .authminimenu
+    {
+
+        position: absolute;
+        top: 100%;
+        right:0;
+        left:0;
+        .logout
+        {
+     background-color: transparent;
+    color: inherit;
+    text-align: right;
+    width: 100%;
+    line-height: 1;
+    display: flex
+;
+    align-items: center;
+    justify-content: space-between;
+            &::before
+            {
+                 font-family: 'remixicon';
+                 content: "\eed8";
+            }
         }
     }
 }

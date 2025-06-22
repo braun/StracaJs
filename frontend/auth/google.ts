@@ -135,7 +135,7 @@ export class GoogleAuth implements AuthenticationProvider
       return new GoogleButton();
     }
     renderUserInfo(): HejlElement {
-      const rv = HCONTSB('googleinfo').stack([IMG('avatar').srcbinder(()=>this.credentials.picture),SPAN('name').textBinder(()=>this.credentials.name)]);
+      const rv = HCONTSB('googleinfo').class('userinfostrip').stack([IMG('avatar').srcbinder(()=>this.credentials.picture),SPAN('name').textBinder(()=>this.credentials.name)]);
       return rv;
     }
     addProviderCallback(cb: ProviderCallback): void {
