@@ -55,9 +55,9 @@ export class StracaConfigs
      * @param name name of the config to get
      * @returns config json or null if not found
      */
-    async getConfig<T=any>(name:string,defval:T = null):Promise<T>
+    async getConfig<T=any>(name:string,defval:T = null,options?: { folder?: string }):Promise<T>
     {
-        const fname = join(this.straca.datadir, "configs", name + ".json");
+        const fname = join(this.straca.datadir, options?.folder ?? "configs", name + ".json");
         if(!fs.existsSync(fname))
             return defval;
         const content = await fs.promises.readFile(fname, "utf-8");
