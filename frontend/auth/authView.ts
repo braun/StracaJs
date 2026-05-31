@@ -3,6 +3,8 @@ import { AuthenticationProvider, AuthenticationProviderBattery } from "./provide
 import { PLAINLAYOUT } from "hejl/topnest/plainlayout";
 import { IMG } from "hejl/base/image";
 import { H3T, STRONGT } from "hejl/base/hejlHtmlTags";
+import { T } from "hejl/base/hejli18n";
+import { BUTTONCL } from "hejl/base/button";
 
 export function createAuthPanel(bat:AuthenticationProviderBattery)
 {
@@ -23,8 +25,28 @@ export function createAuthView(title:string, bat:AuthenticationProviderBattery)
             VCONT('authpanel').stack([
                 VCONT('authcard').class('card')
                     .stack([
-                        STRONGT('Continue with:'),createAuthPanel(bat)])
+                        STRONGT(T('Continue with:')),createAuthPanel(bat)])
             ]));
 
         return layout;
+}
+
+export function createAuthorizedUserMiniView(bat:AuthenticationProviderBattery)
+{
+    var menuvisible  = false;
+    const layout = VPANEL('authmini')
+        .stack([
+            bat.currentProvider.renderUserInfo().click(()=>{
+                menuvisible = !menuvisible;
+              layout.rebind();
+            }),
+
+            VCONT('authminimenu').stack([
+                BUTTONCL('logout',()=>{
+                    bat.currentProvider.logout();
+                    window.location.reload();
+                }).text(T('Logout'))
+            ]).visible(()=>menuvisible)
+             ]);
+    return layout;
 }
