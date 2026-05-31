@@ -8,7 +8,7 @@ import { StracaInHandful } from "./handful";
 /**
  * options for StracaManager constructor
  */
-export interface StracaStateOptions
+export interface StracaStateOptions<T>
 {
     /**
      * message type callback for message holding the state
@@ -19,7 +19,13 @@ export interface StracaStateOptions
      * name of event to actualize the state.
      * set this to use backflow events to actualize state
      */
-    actualizationEvent?:string
+    actualizationEvent?:string,
+
+    /**
+     * default value for state
+     * if not set, the state is not initialized
+     */
+    defvalue?:T
 }
 
 export interface StateChangedCallback<T>
@@ -34,11 +40,11 @@ export class StracaStateManager<T>
 {
     protected straca:StracaInHandful;
     protected stateMsg:Message;
-    protected options:StracaStateOptions = {
+    protected options:StracaStateOptions<T> = {
         mtype: ()=>`cli.state.its.${app.straca.appToken}`
     };
     
-    constructor(straca:StracaInHandful,options?:StracaStateOptions)
+    constructor(straca:StracaInHandful,options?:StracaStateOptions<T>)
     {
         this.straca = straca;
         if(options != null)
@@ -84,11 +90,16 @@ export class StracaStateManager<T>
      {
         const res = await this.straca.loadMessages().mtype(this.stateMt).loadOne();
         if(res != null)
-        {
             this.stateMsg = res;
+       else if(this.options.defvalue != null)
+           this.stateMsg = {
+                    content: this.options.defvalue,
+                    meta: { messageType: this.stateMt }
+                }
+        if(this.stateMsg != null)
             this.onchange.fire((cb)=>cb(this.state));
  
-        }
+        
         return this;
      }
 

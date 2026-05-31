@@ -48,6 +48,24 @@ export interface StracaStoreRequest<T=any>
 }
 
 /**
+ * prepares response for StracaStoreRequest
+ * @param req request to prepare response for
+ * @param ok process status
+ * @param data response data
+ * @template T type of response data
+ * @returns prepared response
+ */
+export function prepareResponse<T=any>(req:StracaStoreRequest,ok:boolean,data:T):StracaStoreResponse<T>
+{
+    return {
+        operation:req.operation,
+        oprationId:req.oprationId,
+        ok:ok,
+        chainOk:ok,
+        data:data
+    }
+}
+/**
  * General response from straca server
  * Response encapsulating json
  */

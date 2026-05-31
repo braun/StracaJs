@@ -35,6 +35,14 @@ export interface CawLifecycleListener
  */
 export class CawListener
 {
+    addListener(listener:CawLifecycleListener) {
+        const rv = this.lifecycleCallbacker.addListener(listener);
+        if(this.opened )
+            listener.onOpen().catch((err)=>{
+                console.error("CawListener", "Error in onOpen", err);
+            });
+        return rv;
+    }
     serviceId:string;
     straca:StracaInHandful;
     eventAbortController:AbortController;
@@ -94,6 +102,7 @@ export class CawListener
         }
     }
 
+    opened:boolean = false;
     lifecycleCallbacker:Callbacker<CawLifecycleListener> = new Callbacker();        
     /**
      * connects to cawservice on straca server.
@@ -118,8 +127,10 @@ export class CawListener
             },
 
             async onopen(response) {
+                this.opened = false;
                 if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
                  {
+                    this.opened = true;
                     console.error("Caw","opened!")
                     // clear the callbacks, should be readded by subscribe in onOpen handlers
                     caw.callbacks = {};
@@ -164,9 +175,11 @@ export class CawListener
             onclose() {
                 // if the server closes the connection unexpectedly, retry:
                 console.error("Caw","closed!")
+                this.opened = false;
                 throw new RetriableError();
             },
             onerror(err) {
+                this.opened = false;
                 console.error("Caw",err)
                 if (err instanceof FatalError) {
                     throw err; // rethrow to stop the operation
@@ -212,6 +225,7 @@ export class CawListener
          const srcPromise =  new EventSource(url);
 
          srcPromise.onopen = async (response) => {
+            this.opened = true;
                 // if (response. && response.headers.get('content-type') === EventStreamContentType) {
                 //  {
                 //     console.error("Caw","opened!")
@@ -259,6 +273,7 @@ export class CawListener
             
           
            srcPromise.onerror = (err)=> {
+            this.opened = false;
                 console.error("Caw",err)
                 if (err instanceof FatalError) {
                     throw err; // rethrow to stop the operation
@@ -283,4 +298,78 @@ export class CawListener
     return rv;
     }
 
+     /**
+     * connects to cawservice on straca server by Websockets.
+     * Establishes WS channel to receive events of straca server
+     */
+    async listenWs(lifecycleListener:CawLifecycleListener):Promise<void>
+    {
+        if(lifecycleListener != null)
+            this.lifecycleCallbacker.addListener(lifecycleListener);
+        const rv = new Promise<void>( (resolve,reject)=>{
+
+        
+            const req =  this.straca.formRequest(this.serviceId,"listen","GET");
+
+            const url = this.straca.formUrlForRequest(req);
+            this.eventAbortController =  new AbortController();
+            const caw = this;
+        
+            const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
+            const wsHost = window.location.host // includes hostname and port
+            const wsUrl = `${wsProtocol}://${wsHost}/ws`
+
+            const socket = new WebSocket(wsUrl);
+            socket.addEventListener("open", async () => {
+                this.opened = true;
+                        caw.callbacks = {};
+                          socket.send(JSON.stringify({event:"connect",req: req}));
+                        await caw.lifecycleCallbacker.fire((cb)=>cb.onOpen());  
+            
+                        resolve();
+                        return; // everything's good
+                    });
+
+        socket.addEventListener("message", async (msg: MessageEvent) => {
+                try {
+                    const data = JSON.parse(msg.data)
+                    const evres = data.data as StracaStoreResponse;
+                    const evid = evres.operation;
+                    for(const cbsk in caw.callbacks)
+                    {
+        
+                        if(!evid.startsWith(cbsk))
+                            continue;
+                        const cbs = caw.callbacks[cbsk];
+                        for(const cb of cbs)
+                            try
+                            {
+                            await cb(evres);  
+                            }
+                            catch(err)
+                            {
+                                console.error("onCaw",err);
+                            }         
+                    }
+                } catch (err) {
+                        console.error("❌ Failed to parse message", err)
+                    }
+            })
+                
+            
+            socket.addEventListener("close", () => {
+                    this.opened = false;
+                    console.log("❌ Disconnected from WebSocket server")
+                
+            });
+
+        
+            socket.addEventListener("error", (err) => {
+                    console.error("🚨 WebSocket error", err)
+            })
+            // firefox does not fire the onopen event        
+            
+        })
+        return rv;
+    }
 }

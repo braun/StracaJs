@@ -10,6 +10,9 @@ const  TAG="StracaCaw";
  * Back flow event channel. brings events to clients
  */
 export class StracaCaw extends StracaServiceBase {
+    listening(server:any) {
+     
+    }
 
  
 
@@ -19,6 +22,30 @@ export class StracaCaw extends StracaServiceBase {
         super(straca,serviceName);
     
     
+        this.init();
+
+           /** 
+          * handles subscription of events
+         */
+         this.addHandler("subscribe",async (stracaReq:StracaStoreRequest,stracaRes,sur,req,res)=>{
+            const client = this.map[stracaReq.deviceId];
+            if(client == null)
+            {
+                this.straca.sendNoFound(res,stracaRes);
+            
+                return;
+            }
+            const subsc = stracaReq.data as CawSubscribeRequest;
+            for(const evrecord of subsc.subscribe)
+            {
+                this.subscribe(client,evrecord);
+            }
+
+         });
+    }
+
+    init()
+    {
         /**
          * SSE will connect to this endpoint
          */
@@ -63,26 +90,8 @@ export class StracaCaw extends StracaServiceBase {
        
          });
 
-         /** 
-          * handles subscription of events
-         */
-         this.addHandler("subscribe",async (stracaReq:StracaStoreRequest,stracaRes,sur,req,res)=>{
-            const client = this.map[stracaReq.deviceId];
-            if(client == null)
-            {
-                this.straca.sendNoFound(res,stracaRes);
-            
-                return;
-            }
-            const subsc = stracaReq.data as CawSubscribeRequest;
-            for(const evrecord of subsc.subscribe)
-            {
-                this.subscribe(client,evrecord);
-            }
-
-         });
+      
     }
-
     fireEvent(eventId:string,data:any)
     {
         console.log(TAG,"fireEvent",eventId)

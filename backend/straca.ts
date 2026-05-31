@@ -3,13 +3,14 @@ import * as express from 'express';
 import { MessageStoreFactory, StracaStore } from './stracastore';
 import { join } from 'path';
 import { MessageStoreManager } from '@straca/common/models/mstore';
-import { StracaStoreRequest, StracaStoreResponse } from '@straca/common/models/stracadefs';
+import { prepareResponse, StracaStoreRequest, StracaStoreResponse } from '@straca/common/models/stracadefs';
 import { StracaMessageStoreManager } from './stracastoremanager';
 import { StracaCaw } from './stracacaw';
 import * as ejs from 'ejs';
 import multer = require('multer');
 import { ISessionKeyPayload } from './stracauth';
 import { StracaConfigs } from './stracaconfigs';
+import { StracaCawWs } from './StracaCawWs';
 
 
 const TAG="STRACA";
@@ -135,13 +136,7 @@ export  class Straca
                async function executeRequestLogic(handle: StracaOperationHandler<any, any>, sreq: StracaStoreRequest<any>, surrounding: StracaSurroundingData)
                {
 
-                  const rv: StracaStoreResponse = {
-                     operation: sreq.operation,
-                     oprationId: sreq.oprationId,
-                     ok: true,
-                     chainOk:true,
-                     data: null
-                  } 
+                  const rv: StracaStoreResponse = prepareResponse(sreq, true, null);
                   await handle(sreq, rv, surrounding, req, res);
                  
 
@@ -265,13 +260,20 @@ export  class Straca
       return rv; 
    };
 
+   createCaw()
+   {
+       return new StracaCaw(this,"caw");
+    
+   }
+   
     constructor(app:express.Express)
     {
       const mult = multer();
         this.app = app;
         this.configs = new StracaConfigs(this);
-        this.caw = new StracaCaw(this,"caw");
-        this.addService(this.caw);
+       
+       this.caw = this.createCaw();
+       this.addService(this.caw);
 
         this.app.get("/straca/doc/services",async (req,res,next)=>{
          res.type('json');
