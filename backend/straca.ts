@@ -283,8 +283,10 @@ export  class Straca
                   return undefined;
                if(key == "payload" || key == "response")
                {
+                  if(val == null)
+                     return undefined;
                   return {
-                     class:val.name,
+                     class:val,
                    //  location:Reflect.getMetadata("design:type",val)
                   }
                }
